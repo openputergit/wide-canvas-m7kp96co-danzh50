@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Management System</title>
+    <script src="https://unpkg.com/@supabase/supabase-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .timetable-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 1px;
+            background-color: #e5e7eb;
+        }
+        .timetable-cell {
+            padding: 8px;
+            background-color: white;
+            min-height: 80px;
+        }
+        @media (max-width: 768px) {
+            .timetable-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .time-column {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Login Section -->
+    <div id="loginSection" class="min-h-screen flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">School Management System</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700">Email</label>
+                    <input type="email" id="email" class="w-full p-2 border rounded focus:outline-none focus:border-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700">Password</label>
+                    <input type="password" id="password" class="w-full p-2 border rounded focus:outline-none focus:border-blue-500" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Login</button>
+                <p class="text-center">
+                    <a href="#" id="forgotPassword" class="text-blue-500 hover:underline">Forgot Password?</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboardSection" class="hidden">
+        <!-- Navigation -->
+        <nav class="bg-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <span class="text-xl font-semibold">School Dashboard</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span id="userRole" class="text-gray-600"></span>
+                        <button id="logoutBtn" class="text-red-500 hover:text-red-700">
+                            <i class="bi bi-box-arrow-right text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Admin Controls (visible only to admin) -->
+        <div id="adminControls" class="hidden max-w-7xl mx-auto mt-6 px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <button class="p-4 bg-blue-500 text-white rounded hover:bg-blue-600" onclick="showAddUserModal('teacher')">
+                    Add Teacher
+                </button>
+                <button class="p-4 bg-green-500 text-white rounded hover:bg-green-600" onclick="showAddUserModal('student')">
+                    Add Student
+                </button>
+                <button class="p-4 bg-purple-500 text-white rounded hover:bg-purple-600" onclick="showTimetableModal()">
+                    Set Timetable
+                </button>
+            </div>
+        </div>
+
+        <!-- Timetable -->
+        <div class="max-w-7xl mx-auto mt-6 px-4 overflow-x-auto">
+            <h3 class="text-xl font-semibold mb-4">Weekly Timetable</h3>
+            <div class="timetable-grid">
+                <div class="timetable-cell font-bold">Time</div>
+                <div class="timetable-cell font-bold">Monday</div>
+                <div class="timetable-cell font-bold">Tuesday</div>
+                <div class="timetable-cell font-bold">Wednesday</div>
+                <div class="timetable-cell font-bold">Thursday</div>
+                <div class="timetable-cell font-bold">Friday</div>
+                <div class="timetable-cell font-bold">Saturday</div>
+                <div class="timetable-cell font-bold">Sunday</div>
+                <!-- Timetable cells will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4">Add New User</h3>
+            <form id="addUserForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700">Name</label>
+                    <input type="text" id="userName" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700">Email</label>
+                    <input type="email" id="userEmail" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700">Password</label>
+                    <input type="password" id="userPassword" class="w-full p-2 border rounded" required>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('addUserModal')" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Add User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Set Timetable Modal -->
+    <div id="timetableModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-8 rounded-lg max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4">Set Timetable</h3>
+            <form id="timetableForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700">Day</label>
+                    <select id="day" class="w-full p-2 border rounded" required>
+                        <option value="monday">Monday</option>
+                        <option value="tuesday">Tuesday</option>
+                        <option value="wednesday">Wednesday</option>
+                        <option value="thursday">Thursday</option>
+                        <option value="friday">Friday</option>
+                        <option value="saturday">Saturday</option>
+                        <option value="sunday">Sunday</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700">Time Slot</label>
+                    <input type="time" id="timeSlot" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700">Subject</label>
+                    <input type="text" id="subject" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700">Teacher</label>
+                    <select id="teacher" class="w-full p-2 border rounded" required>
+                        <!-- Teachers will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('timetableModal')" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Set Timetable</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Simulated database
+        const users = [
+            { email: 'admin@school.com', password: 'admin123', role: 'admin' },
+            { email: 'teacher@school.com', password: 'teacher123', role: 'teacher' },
+            { email: 'student@school.com', password: 'student123', role: 'student' }
+        ];
+
+        const timetableData = [];
+
+        // Login functionality
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const user = users.find(u => u.email === email && u.password === password);
+            
+            if (user) {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('dashboardSection').classList.remove('hidden');
+                document.getElementById('userRole').textContent = `Logged in as ${user.role}`;
+                
+                if (user.role === 'admin') {
+                    document.getElementById('adminControls').classList.remove('hidden');
+                }
+
+                loadTimetable(user.role, email);
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Login Failed',
+                    text: 'Invalid email or password'
+                });
+            }
+        });
+
+        // Logout functionality
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('dashboardSection').classList.add('hidden');
+            document.getElementById('adminControls').classList.add('hidden');
+            document.getElementById('loginForm').reset();
+        });
+
+        // Add user form submission
+        document.getElementById('addUserForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('userName').value;
+            const email = document.getElementById('userEmail').value;
+            const password = document.getElementById('userPassword').value;
+
+            users.push({
+                email,
+                password,
+                role: document.getElementById('addUserModal').dataset.userType
+            });
+
+            Swal.fire({
+                icon: 'success',
+                title: 'User Added',
+                text: 'New user has been added successfully'
+            });
+
+            closeModal('addUserModal');
+        });
+
+        // Timetable form submission
+        document.getElementById('timetableForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const day = document.getElementById('day').value;
+            const timeSlot = document.getElementById('timeSlot').value;
+            const subject = document.getElementById('subject').value;
+            const teacher = document.getElementById('teacher').value;
+
+            timetableData.push({
+                day,
+                timeSlot,
+                subject,
+                teacher
+            });
+
+            loadTimetable('admin');
+            closeModal('timetableModal');
+        });
+
+        // Modal functions
+        function showAddUserModal(userType) {
+            document.getElementById('addUserModal').classList.remove('hidden');
+            document.getElementById('addUserModal').dataset.userType = userType;
+        }
+
+        function showTimetableModal() {
+            document.getElementById('timetableModal').classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // Load timetable based on role
+        function loadTimetable(role, email) {
+            const timetableGrid = document.querySelector('.timetable-grid');
+            // Clear existing timetable except headers
+            const headers = Array.from(timetableGrid.children).slice(0, 8);
+            timetableGrid.innerHTML = '';
+            headers.forEach(header => timetableGrid.appendChild(header));
+
+            // Add time slots
+            const timeSlots = ['8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'];
+            timeSlots.forEach(time => {
+                const timeRow = document.createElement('div');
+                timeRow.className = 'timetable-cell time-column';
+                timeRow.textContent = time;
+                timetableGrid.appendChild(timeRow);
+
+                // Add cells for each day
+                for (let i = 0; i < 7; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'timetable-cell';
+                    const entry = timetableData.find(t => 
+                        t.timeSlot === time && 
+                        ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][i] === t.day
+                    );
+                    if (entry) {
+                        cell.innerHTML = `
+                            <p class="font-semibold">${entry.subject}</p>
+                            <p class="text-sm text-gray-600">${entry.teacher}</p>
+                        `;
+                    }
+                    timetableGrid.appendChild(cell);
+                }
+            });
+        }
+
+        // Forgot password functionality
+        document.getElementById('forgotPassword').addEventListener('click', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            if (email) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Password Reset',
+                    text: 'If this email exists in our system, you will receive a password reset link shortly.'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Email Required',
+                    text: 'Please enter your email address first.'
+                });
+            }
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
